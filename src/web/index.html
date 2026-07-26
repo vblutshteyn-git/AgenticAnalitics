@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ru" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentics Analytics — от данных к инсайтам</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📊</text></svg>">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>Agentics Analytics</h1>
+      <p class="brand-sub">данные → инсайты</p>
+    </div>
+  </div>
+  <div class="topbar-meta">
+    <span class="pill" id="llm-status" title="Статус языковой модели">…</span>
+    <span class="pill pill-mono" id="mcp-endpoint" title="Адрес MCP-сервера для агентов">MCP</span>
+    <button class="icon-btn" id="theme-toggle" type="button" aria-label="Переключить тему">◐</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ------------------------------------------------------------------ -->
+  <aside class="sidebar">
+    <section class="side-block">
+      <h2>Загрузить данные</h2>
+      <label class="dropzone" id="dropzone" tabindex="0">
+        <input type="file" id="file-input" accept=".csv,.tsv,.json,.ndjson,.txt" hidden>
+        <span class="dropzone-icon" aria-hidden="true">↥</span>
+        <span class="dropzone-text">Перетащите CSV или JSON<br><small>или нажмите для выбора</small></span>
+      </label>
+      <div class="sample-row">
+        <span class="side-label">Демо-наборы</span>
+        <div id="sample-buttons" class="sample-buttons"></div>
+      </div>
+    </section>
+
+    <section class="side-block side-grow">
+      <h2>Наборы данных <span class="count" id="dataset-count"></span></h2>
+      <ul class="dataset-list" id="dataset-list"></ul>
+    </section>
+
+    <section class="side-block side-foot">
+      <details>
+        <summary>Подключение через MCP</summary>
+        <p class="muted small">
+          Агент может загружать данные и получать инсайты без браузера.
+        </p>
+        <pre class="code-block" id="mcp-config"></pre>
+      </details>
+    </section>
+  </aside>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section class="content" id="content">
+    <div class="empty-state" id="empty-state">
+      <h2>Загрузите данные, чтобы начать</h2>
+      <p>
+        Агент профилирует колонки, построит семантическую модель, сформирует гипотезы
+        и проверит каждую статистически. В отчёт попадут только те находки,
+        которые прошли проверку — вместе с доказательствами и следующими шагами.
+      </p>
+      <p class="muted small">
+        Все расчёты выполняются детерминированным кодом. Языковая модель отвечает
+        только за формулировки и перевод вопросов на естественном языке в запросы;
+        числа она не генерирует.
+      </p>
+    </div>
+
+    <div class="workspace" id="workspace" hidden>
+      <header class="ws-head">
+        <div>
+          <h2 id="ds-name"></h2>
+          <p class="ws-meta" id="ds-meta"></p>
+        </div>
+        <button class="btn btn-ghost btn-danger" id="delete-dataset" type="button">Удалить</button>
+      </header>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab is-active" role="tab" data-tab="insights">Инсайты</button>
+        <button class="tab" role="tab" data-tab="semantic">Семантическая модель</button>
+        <button class="tab" role="tab" data-tab="query">Запросы</button>
+        <button class="tab" role="tab" data-tab="profile">Профиль колонок</button>
+      </nav>
+
+      <!-- Insights ------------------------------------------------------ -->
+      <div class="panel is-active" id="panel-insights" role="tabpanel">
+        <div class="run-bar">
+          <input type="text" id="focus-input" class="input input-grow"
+                 placeholder="Необязательно: на чём сфокусироваться — например «почему вырос отток»">
+          <button class="btn btn-primary" id="run-analysis" type="button">Найти инсайты</button>
+        </div>
+
+        <div class="run-progress" id="run-progress" hidden>
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <ol class="trace-log" id="trace-log"></ol>
+        </div>
+
+        <div class="headline-card" id="headline-card" hidden>
+          <span class="headline-label">Итог</span>
+          <p id="headline-text"></p>
+          <dl class="run-stats" id="run-stats"></dl>
+        </div>
+
+        <div class="next-steps-card" id="plan-card" hidden>
+          <h3>План действий</h3>
+          <ol class="plan-list" id="plan-list"></ol>
+        </div>
+
+        <div id="insight-list" class="insight-list"></div>
+      </div>
+
+      <!-- Semantic ------------------------------------------------------ -->
+      <div class="panel" id="panel-semantic" role="tabpanel">
+        <div class="notice" id="semantic-notice"></div>
+        <div class="semantic-grid" id="semantic-grid"></div>
+      </div>
+
+      <!-- Query --------------------------------------------------------- -->
+      <div class="panel" id="panel-query" role="tabpanel">
+        <div class="query-card">
+          <h3>Вопрос на естественном языке</h3>
+          <div class="run-bar">
+            <input type="text" id="ask-input" class="input input-grow"
+                   placeholder="Например: выручка по месяцам в разрезе регионов">
+            <button class="btn btn-primary" id="ask-btn" type="button">Спросить</button>
+          </div>
+          <p class="muted small" id="ask-hint"></p>
+        </div>
+
+        <div class="query-card">
+          <h3>Конструктор запроса</h3>
+          <div class="builder" id="builder"></div>
+          <button class="btn" id="run-query" type="button">Выполнить</button>
+        </div>
+
+        <div id="query-result"></div>
+      </div>
+
+      <!-- Profile ------------------------------------------------------- -->
+      <div class="panel" id="panel-profile" role="tabpanel">
+        <div class="table-scroll">
+          <table class="data-table" id="profile-table"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
