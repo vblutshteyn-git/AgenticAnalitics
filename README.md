@@ -1,0 +1,2 @@
+# AgenticAnalitics
+Agentic analitics tool
