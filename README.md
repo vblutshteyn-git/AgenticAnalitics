@@ -9,12 +9,20 @@
 загрузку и анализ выполнял агент (Claude Desktop, Claude Code, любой MCP-клиент).
 
 ```bash
-npm install && npm run build && npm start
+npm ci && npm run build && npm start
 # http://127.0.0.1:4173
 ```
 
 Нажмите «SaaS-подписки (демо)» и «Найти инсайты» — данные и заложенные в них
 закономерности уже готовы.
+
+Развёртывание на сервере — **[DEPLOY.md](DEPLOY.md)**: Docker и compose,
+systemd-юнит, обратный прокси, чек-лист проверки, обновление, резервные копии
+и разбор типичных проблем. Коротко, через Docker:
+
+```bash
+docker compose up -d --build
+```
 
 ---
 

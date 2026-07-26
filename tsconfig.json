@@ -14,7 +14,11 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": true,
+    // По умолчанию tsc выдаёт JavaScript даже при ошибках типов. В деплое это
+    // означает, что сломанная сборка молча уезжает в продакшн и запускается.
+    // Пусть лучше упадёт на этапе сборки.
+    "noEmitOnError": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "src/web"]

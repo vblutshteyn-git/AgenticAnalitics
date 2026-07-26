@@ -1,0 +1,65 @@
+# systemd-юнит для запуска без Docker.
+#
+# Установка:
+#   sudo cp deploy/agentics-analytics.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now agentics-analytics
+#
+# Перед этим создайте пользователя и разложите файлы — см. DEPLOY.md,
+# раздел «Вариант B: systemd».
+
+[Unit]
+Description=Agentics Analytics — data to insight
+Documentation=https://github.com/vblutshteyn-git/AgenticAnalitics
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agentics
+Group=agentics
+WorkingDirectory=/opt/agentics-analytics
+ExecStart=/usr/bin/node dist/server/main.js
+
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=4173
+Environment=AGENTICS_DATA_DIR=/var/lib/agentics-analytics
+
+# Ключ модели держим в отдельном файле с правами 600, а не в юните:
+# содержимое юнита читается любым пользователем через systemctl cat.
+# Файл необязателен — без него анализ работает полностью.
+EnvironmentFile=-/etc/agentics-analytics/env
+
+Restart=on-failure
+RestartSec=5s
+
+# Приложение закрывает слушающий сокет по SIGTERM и даёт текущим запросам
+# завершиться; 20 секунд с запасом хватает на самый долгий анализ.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# --- изоляция ---------------------------------------------------------------
+# Приложению нужен только каталог данных на запись.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/agentics-analytics
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictRealtime=true
+SystemCallArchitectures=native
+
+# Анализ держит набор в памяти; предел отсекает загрузку, которая
+# выдавила бы остальные процессы на машине.
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

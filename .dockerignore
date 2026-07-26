@@ -1,0 +1,16 @@
+# Всё, что не должно попасть в контекст сборки. Держит образ маленьким
+# и не даёт локальным артефактам перезаписать то, что собирается внутри.
+node_modules
+dist
+samples
+.git
+.gitignore
+*.log
+.DS_Store
+.env
+.env.*
+docker-compose.yml
+Dockerfile
+DEPLOY.md
+README.md
+deploy/

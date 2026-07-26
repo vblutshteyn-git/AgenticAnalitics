@@ -1,0 +1,92 @@
+# Пример обратного прокси для Agentics Analytics.
+#
+# У приложения НЕТ собственной аутентификации. Этот файл закрывает две дыры:
+# добавляет TLS и авторизацию. Без прокси приложение следует держать
+# на 127.0.0.1.
+#
+# Создать файл паролей:
+#   sudo apt install apache2-utils
+#   sudo htpasswd -c /etc/nginx/.htpasswd ваш-логин
+#
+# Сертификат:  sudo certbot --nginx -d analytics.example.com
+
+upstream agentics {
+    server 127.0.0.1:4173;
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    server_name analytics.example.com;
+    # Единственная задача — редирект на HTTPS.
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name analytics.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/analytics.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/analytics.example.com/privkey.pem;
+
+    # Загрузка наборов данных: лимит должен быть не меньше того,
+    # что принимает само приложение (64 МБ).
+    client_max_body_size 64m;
+
+    auth_basic           "Agentics Analytics";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location / {
+        proxy_pass http://agentics;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        # Анализ большого набора может считаться заметное время.
+        proxy_read_timeout 300s;
+    }
+
+    # Прогресс анализа идёт через Server-Sent Events. Без отключённой
+    # буферизации nginx копит ответ и отдаёт его одним куском в конце —
+    # живой ход работы агента пропадает, и это выглядит как зависание.
+    location /api/datasets/ {
+        proxy_pass http://agentics;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding on;
+        proxy_read_timeout 600s;
+    }
+
+    # MCP по streamable HTTP: тоже потоковый ответ, та же причина.
+    # Клиенты-агенты ходят сюда с собственным токеном, а не через браузер,
+    # поэтому basic-авторизация здесь чаще всего мешает — решите осознанно,
+    # что именно защищает этот маршрут.
+    location /mcp {
+        proxy_pass http://agentics;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+    }
+
+    # Проба доступна без пароля, чтобы балансировщик мог её опрашивать.
+    location = /healthz {
+        auth_basic off;
+        proxy_pass http://agentics;
+        access_log off;
+    }
+}

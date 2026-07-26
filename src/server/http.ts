@@ -23,7 +23,7 @@ import { runAgent } from '../agent/orchestrator.js';
 import { executeQuery, QueryError } from '../core/query.js';
 import type { DatasetStore } from '../core/store.js';
 import type { Insight, SemanticQuery } from '../core/types.js';
-import { buildMcpServer } from '../mcp/server.js';
+import { buildMcpServer, SERVER_VERSION } from '../mcp/server.js';
 import { SAMPLE_DATASETS } from '../tools/samples.js';
 
 export interface ServerOptions {
@@ -70,6 +70,31 @@ async function handle(
       return;
     }
     await handleMcp(req, res, store);
+    return;
+  }
+
+  /*
+   * Liveness/readiness probe for orchestrators (Docker healthcheck, systemd,
+   * Kubernetes). Deliberately separate from /api/status: probes run every few
+   * seconds, so this must not touch the store, the filesystem, or the model
+   * client. It answers exactly one question — is the process serving HTTP.
+   */
+  if (path === '/healthz') {
+    if (method !== 'GET' && method !== 'HEAD') {
+      res.writeHead(405, { Allow: 'GET, HEAD' }).end();
+      return;
+    }
+    const payload = JSON.stringify({
+      status: 'ok',
+      uptimeSeconds: Math.round(process.uptime()),
+      version: SERVER_VERSION,
+    });
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': Buffer.byteLength(payload),
+      'Cache-Control': 'no-store',
+    });
+    res.end(method === 'HEAD' ? undefined : payload);
     return;
   }
 

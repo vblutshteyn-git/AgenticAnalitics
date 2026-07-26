@@ -1,0 +1,51 @@
+services:
+  agentics-analytics:
+    build: .
+    image: agentics-analytics:0.1.0
+    container_name: agentics-analytics
+    restart: unless-stopped
+
+    # По умолчанию порт публикуется только на localhost хоста.
+    # Чтобы открыть сервис наружу, поставьте перед ним обратный прокси
+    # с авторизацией и меняйте привязку осознанно (см. DEPLOY.md).
+    ports:
+      - "127.0.0.1:4173:4173"
+
+    environment:
+      # Внутри контейнера слушаем все интерфейсы — иначе порт недостижим
+      # снаружи контейнера. Ограничение доступа делает публикация порта выше.
+      HOST: 0.0.0.0
+      PORT: 4173
+      AGENTICS_DATA_DIR: /data
+      NODE_ENV: production
+      # Необязательно: включает формулировки и вопросы на естественном языке.
+      # Анализ работает полностью и без ключа.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AGENTICS_MODEL: ${AGENTICS_MODEL:-claude-opus-5}
+
+    volumes:
+      # Загруженные наборы переживают пересоздание контейнера.
+      - agentics-data:/data
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4173/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+    # Разумные ограничения по умолчанию: анализ держит набор данных в памяти.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  agentics-data:
