@@ -1,0 +1,27 @@
+{
+  "name": "agentics-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agentic analytics: data to insight. An agent profiles uploaded data, builds a semantic layer, tests hypotheses statistically and reports verified insights with next steps. Data arrives over MCP or the web UI.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server/main.js",
+    "dev": "tsc -p tsconfig.json && node dist/server/main.js",
+    "mcp": "node dist/mcp/stdio.js",
+    "test": "node --test dist/test/*.test.js",
+    "seed": "node dist/tools/generate-samples.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
